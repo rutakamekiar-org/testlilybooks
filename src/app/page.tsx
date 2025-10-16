@@ -27,15 +27,14 @@ export default async function HomePage() {
     const available = featured.formats.filter(f => f.available);
     const minPrice = available.length ? Math.min(...available.map(f => f.price)) : null;
 
-
     return (
     <section className={styles.hero}>
       <div className={styles.heroInner}>
         <div className={styles.copy}>
-          <h1>Вітаю! Я — Лілія Кухарець</h1>
-          <p>Авторка романів. Тут ви можете дізнатися більше та придбати мої книги.</p>
+          <h1>«Звичайна»</h1>
+          <p>постапокаліптичний ромком</p>
 
-          {featured ? (
+          {featured && (
             <>
               {/* Goodreads rating for featured */}
               {featured.rating && (
@@ -60,19 +59,13 @@ export default async function HomePage() {
 
               <div className={styles.actions}>
                 <Link href={withCacheBust(`/books/${featured.slug}`)} className={styles.cta}>Детальніше</Link>
-                <Link href={withCacheBust("/books")} className={styles.secondary}>Перейти до каталогу</Link>
               </div>
             </>
-          ) : (
-            <div className={styles.actions}>
-              <Link href={withCacheBust("/books")} className={styles.cta}>Перейти до каталогу</Link>
-              <Link href={withCacheBust("/about")} className={styles.secondary}>Про мене</Link>
-            </div>
           )}
         </div>
 
         <div className={styles.cover}>
-          {featured ? (
+          {featured && (
             <>
               {featured.ageRating && (
                 <span
@@ -85,8 +78,6 @@ export default async function HomePage() {
               )}
               <Image src={addBasePath(featured.coverUrl)} alt={featured.title} width={360} height={540} />
             </>
-          ) : (
-            <Image src={addBasePath("/images/book.jpg")} alt="Обкладинка книги" width={360} height={540} />
           )}
         </div>
       </div>
