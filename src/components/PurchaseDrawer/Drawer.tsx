@@ -1,7 +1,7 @@
 "use client";
 import { useEffect, useRef, useState, useMemo } from "react";
 import Image from "next/image";
-import { createPaperCheckoutMock as createPaperCheckout, createDigitalInvoiceMock as createDigitalInvoice } from "@/lib/api.mock";
+import {createDigitalInvoice, createPaperCheckout} from "@/lib/api";
 import type { Book, BookFormat } from "@/lib/types";
 import styles from "./Drawer.module.css";
 import { addBasePath } from "@/lib/paths";
@@ -13,6 +13,7 @@ export default function Drawer({
   const [email, setEmail] = useState("");
   const [phone, setPhone] = useState("");
   const [errors, setErrors] = useState<{ email?: string; phone?: string }>({});
+  const [touched, setTouched] = useState<{ email: boolean; phone: boolean }>({ email: false, phone: false });
   const firstFieldRef = useRef<HTMLInputElement>(null);
   const dialogRef = useRef<HTMLDivElement>(null);
   const lastActiveEl = useRef<HTMLElement | null>(null);
@@ -27,6 +28,7 @@ export default function Drawer({
     if (open) {
       lastActiveEl.current = document.activeElement as HTMLElement;
       setErrors({});
+      setTouched({ email: false, phone: false });
       setLoading(false);
       if (format === "digital") {
         setTimeout(() => firstFieldRef.current?.focus(), 0);
@@ -59,6 +61,17 @@ export default function Drawer({
   const validPhone = useMemo(() => /^\+?\d{10,14}$/.test(phone), [phone]);
   const digitalValid = format === "paper" ? true : (validEmail && validPhone);
 
+  // Live validation feedback for digital inputs once fields are touched
+  useEffect(() => {
+    if (format !== "digital") return;
+    const next: { email?: string; phone?: string } = {};
+    if (touched.email && !validEmail) next.email = "Введіть дійсний email";
+    if (touched.phone && !validPhone) next.phone = "Введіть дійсний телефон (10–14 цифр, можна з +)";
+    setErrors(next);
+  }, [email, phone, validEmail, validPhone, touched, format]);
+
+  const selected = useMemo(() => book.formats.find(f => f.type === format)!, [book, format]);
+
   if (!open) return null;
 
   const onPurchase = async () => {
@@ -74,14 +87,34 @@ export default function Drawer({
       if (!validEmail) newErrors.email = "Введіть дійсний email";
       if (!validPhone) newErrors.phone = "Введіть дійсний телефон (10–14 цифр, можна з +)";
       if (newErrors.email || newErrors.phone) {
+        setTouched({ email: true, phone: true });
         setErrors(newErrors);
         setLoading(false);
         return;
       }
-      const res = await createDigitalInvoice({ productId: "mock", customerEmail: email.trim(), customerPhone: phone.trim() });
+      const res = await createDigitalInvoice({ productId: selected.productId, customerEmail: email.trim(), customerPhone: phone.trim() });
       window.location.href = res.redirectUrl;
-    } catch {
+    } catch (err: unknown) {
       setLoading(false);
+      type ErrorDetails = { errors?: Record<string, string[]> };
+      const message = err instanceof Error ? err.message : undefined;
+      const details: ErrorDetails | undefined =
+        typeof err === "object" && err !== null && "details" in err
+          ? (err as { details?: ErrorDetails }).details
+          : undefined;
+      const errs = details?.errors;
+      if (errs) {
+        if (errs.CustomerEmail?.[0]) {
+          alert("Будь ласка, введіть дійсну адресу електронної пошти.");
+        } else if (errs.CustomerPhone?.[0]) {
+          alert("Будь ласка, введіть дійсний номер телефону.");
+        } else {
+          const firstKey = Object.keys(errs)[0];
+          alert((firstKey ? errs[firstKey]?.[0] : undefined) || message || "Виникла помилка.");
+        }
+      } else {
+        alert(message || "Сервер зараз недоступний. Спробуйте пізніше.");
+      }
     }
   };
 
@@ -89,9 +122,19 @@ export default function Drawer({
 
   return (
     <div className={styles.overlay} aria-modal="true" role="dialog" aria-label="Оформлення замовлення" onClick={(e) => { if (e.target === e.currentTarget) onClose(); }}>
-      <div className={styles.sheet} ref={dialogRef}>
+      <div className={styles.sheet} ref={dialogRef} aria-busy={loading || undefined}>
+        {loading && (
+          <div className={styles.topProgress} aria-hidden="true">
+            <div className={styles.topProgressInner} />
+          </div>
+        )}
         <header className={styles.header}>
-          <h3>{book.title} — {isPaper ? "Паперова" : "Електронна"}</h3>
+          <h3 className={styles.headerTitle}>
+            <span className={styles.titleMain}>{book.title} — {isPaper ? "Паперова" : "Електронна"}</span>
+            {selected?.price != null && (
+              <span className={styles.price}>{`${selected.price} грн`}</span>
+            )}
+          </h3>
           <button onClick={onClose} aria-label="Закрити" className={styles.close}>×</button>
         </header>
 
@@ -105,6 +148,7 @@ export default function Drawer({
                   type="email"
                   value={email}
                   onChange={(e) => setEmail(e.target.value)}
+                  onBlur={() => setTouched((t) => ({ ...t, email: true }))}
                   autoComplete="email"
                   aria-invalid={!!errors.email}
                   aria-describedby={errors.email ? "err-email" : undefined}
@@ -116,6 +160,7 @@ export default function Drawer({
                   type="tel"
                   value={phone}
                   onChange={(e) => setPhone(e.target.value)}
+                  onBlur={() => setTouched((t) => ({ ...t, phone: true }))}
                   autoComplete="tel"
                   placeholder="+380XXXXXXXXX"
                   aria-invalid={!!errors.phone}
@@ -132,9 +177,9 @@ export default function Drawer({
 
         {/* Footer buttons matching original design */}
         {isPaper ? (
-          <div className={styles.checkoutFooter}>
+          <div className={styles.digitalCta}>
             <button className={styles.imageBtn} onClick={onPurchase} aria-label="Monobank Checkout" disabled={loading}>
-              <Image src={addBasePath("/images/monocheckout_button_black_normal.svg")} alt="" width={398} height={56} />
+              <Image src={addBasePath("/images/monocheckout_button_black_normal.svg")} alt="" width={398} height={40} />
             </button>
           </div>
         ) : (
