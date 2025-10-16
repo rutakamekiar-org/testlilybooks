@@ -1,10 +1,29 @@
-import Image from "next/image";
 import styles from "./page.module.css";
 import { events as all, type SimpleEvent } from "@/data/events";
+import ImageCarousel from "@/components/ImageCarousel";
+import fs from "fs";
+import path from "path";
+import {addBasePath} from "@/lib/paths";
+import LocalDateTime from "@/components/LocalDateTime";
 
 function isUpcoming(e: SimpleEvent) { return new Date(e.date) >= new Date(); }
 function sortByDateAsc(a: SimpleEvent, b: SimpleEvent) {
   return new Date(a.date).getTime() - new Date(b.date).getTime();
+}
+
+function getEventImages(e: SimpleEvent): string[] {
+  try {
+    const dir = path.join(process.cwd(), "public", "images", "events", e.id);
+    if (fs.existsSync(dir)) {
+      const files = fs.readdirSync(dir)
+        .filter(f => /\.(png|jpe?g|webp|gif|avif)$/i.test(f))
+        .sort((a, b) => a.localeCompare(b, undefined, { numeric: true, sensitivity: "base" }));
+      if (files.length > 0) {
+        return files.map(f => addBasePath(`/images/events/${e.id}/${f}`));
+      }
+    }
+  } catch {}
+  return [];
 }
 
 export const metadata = {
@@ -68,31 +87,27 @@ export default function EventsPage() {
   );
 }
 
-function formatDateParts(dateIso: string){
-  const d = new Date(dateIso);
-  return {
-    date: d.toLocaleDateString(undefined, { year: "numeric", month: "long", day: "numeric" }),
-    time: d.toLocaleTimeString(undefined, { hour: "2-digit", minute: "2-digit" })
-  };
-}
-
 function FeaturedHero({ event }: { event: SimpleEvent }){
-  const { date, time } = formatDateParts(event.date);
+  const images = getEventImages(event);
   return (
     <article className={styles.hero}>
       <div className={styles.heroImageWrap}>
-        {event.image && (
-          <Image src={event.image} alt={event.title} fill sizes="(max-width: 800px) 100vw, 1280px" style={{ objectFit: "cover" }} />
+        {images.length > 0 && (
+          <ImageCarousel images={images} alt={event.title} sizes="(max-width: 800px) 100vw, 1280px" navInside ariaLabel={`Зображення події: ${event.title}`} />
         )}
         <div className={styles.heroOverlay} />
-        <div className={styles.heroDateBadge}>{date} · {time}</div>
+        <div className={styles.heroDateBadge}>
+            <LocalDateTime iso={event.date} />
+        </div>
         <div className={styles.heroContent}>
           <h3 className={styles.heroTitle}>{event.title}</h3>
         </div>
       </div>
       <div className={styles.heroBelow}>
         <p className={styles.heroBelowMeta}>
-          <span className={styles.heroBelowDate}>{date} · {time}</span>
+          <span className={styles.heroBelowDate}>
+              <LocalDateTime iso={event.date} />
+          </span>
           {event.location ? ` · ${event.location}` : ""}
         </p>
         {event.blurb && (
@@ -111,18 +126,18 @@ function FeaturedHero({ event }: { event: SimpleEvent }){
 }
 
 function TimelineItem({ event }: { event: SimpleEvent }){
-  const { date, time } = formatDateParts(event.date);
+  const images = getEventImages(event);
   return (
     <li className={styles.timelineItem}>
       <span className={styles.node} aria-hidden />
       <div className={styles.thumb}>
-        {event.image && (
-          <Image src={event.image} alt="" fill sizes="120px" style={{ objectFit: "cover" }} />
+        {images.length > 0 && (
+          <ImageCarousel images={images} alt="" sizes="120px" ariaLabel={`Зображення: ${event.title}`} />
         )}
       </div>
       <div className={styles.itemBody}>
         <h3 className={styles.itemTitle}>{event.title}</h3>
-        <p className={styles.itemMeta}>{date} · {time}{event.location ? ` · ${event.location}` : ""}</p>
+        <p className={styles.itemMeta}> <LocalDateTime iso={event.date} />{event.location ? ` · ${event.location}` : ""}</p>
         {event.blurb && (<p className={styles.itemBlurb}>{event.blurb}</p>)}
         <div className={styles.itemActions}>
           {event.url && (
