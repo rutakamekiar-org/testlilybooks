@@ -7,22 +7,23 @@ import styles from "./Drawer.module.css";
 import { addBasePath } from "@/lib/paths";
 
 export default function Drawer({
-  open, onClose, book, format,
-}: { open: boolean; onClose: () => void; book: Book; format: BookFormat; }) {
+  open, onCloseAction, book, format,
+}: { open: boolean; onCloseAction: () => void; book: Book; format: BookFormat; }) {
   const [loading, setLoading] = useState(false);
   const [email, setEmail] = useState("");
   const [phone, setPhone] = useState("");
   const [errors, setErrors] = useState<{ email?: string; phone?: string }>({});
   const [touched, setTouched] = useState<{ email: boolean; phone: boolean }>({ email: false, phone: false });
+  const [quantity, setQuantity] = useState<number | ''>(1);
   const firstFieldRef = useRef<HTMLInputElement>(null);
   const dialogRef = useRef<HTMLDivElement>(null);
   const lastActiveEl = useRef<HTMLElement | null>(null);
 
   useEffect(() => {
-    function onKey(e: KeyboardEvent) { if (e.key === "Escape" && open) onClose(); }
+    function onKey(e: KeyboardEvent) { if (e.key === "Escape" && open) onCloseAction(); }
     window.addEventListener("keydown", onKey);
     return () => window.removeEventListener("keydown", onKey);
-  }, [open, onClose]);
+  }, [open, onCloseAction]);
 
   useEffect(() => {
     if (open) {
@@ -32,6 +33,7 @@ export default function Drawer({
       setLoading(false);
       setEmail("");
       setPhone("");
+      setQuantity(1);
       if (format === "digital") {
         setTimeout(() => firstFieldRef.current?.focus(), 0);
       }
@@ -62,6 +64,7 @@ export default function Drawer({
   const validEmail = useMemo(() => /^\S+@\S+\.\S+$/.test(email), [email]);
   const validPhone = useMemo(() => /^\+?\d{10,14}$/.test(phone), [phone]);
   const digitalValid = format === "paper" ? true : (validEmail && validPhone);
+  const quantityValid = useMemo(() => quantity && Number.isFinite(quantity) && quantity >= 1, [quantity]);
 
   // Live validation feedback for digital inputs once fields are touched
   useEffect(() => {
@@ -74,6 +77,16 @@ export default function Drawer({
 
   const selected = useMemo(() => book.formats.find(f => f.type === format)!, [book, format]);
 
+  const isPaper = format === "paper";
+  const displayPrice = useMemo(() => {
+    const base = selected?.price ?? 0;
+    if (isPaper) {
+      const qty = Math.max(1, Math.floor(Number(quantity) || 1));
+      return base * qty;
+    }
+    return base;
+  }, [selected?.price, isPaper, quantity]);
+
   if (!open) return null;
 
   const onPurchase = async () => {
@@ -81,8 +94,9 @@ export default function Drawer({
       setErrors({});
       setLoading(true);
       if (format === "paper") {
-        const res = await createPaperCheckout(book.id, 1);
-        onClose()
+        const qty = Math.max(1, Math.floor(Number(quantity) || 1));
+        const res = await createPaperCheckout(book.id, qty);
+        onCloseAction()
         window.location.href = res.redirectUrl;
         return;
       }
@@ -96,7 +110,7 @@ export default function Drawer({
         return;
       }
       const res = await createDigitalInvoice({ productId: selected.productId, customerEmail: email.trim(), customerPhone: phone.trim() });
-      onClose()
+      onCloseAction()
       window.location.href = res.redirectUrl;
     } catch (err: unknown) {
       setLoading(false);
@@ -122,10 +136,8 @@ export default function Drawer({
     }
   };
 
-  const isPaper = format === "paper";
-
   return (
-    <div className={styles.overlay} aria-modal="true" role="dialog" aria-label="Оформлення замовлення" onClick={(e) => { if (e.target === e.currentTarget) onClose(); }}>
+    <div className={styles.overlay} aria-modal="true" role="dialog" aria-label="Оформлення замовлення" onClick={(e) => { if (e.target === e.currentTarget) onCloseAction(); }}>
       <div className={styles.sheet} ref={dialogRef} aria-busy={loading || undefined}>
         {loading && (
           <div className={styles.topProgress} aria-hidden="true">
@@ -136,10 +148,10 @@ export default function Drawer({
           <h3 className={styles.headerTitle}>
             <span className={styles.titleMain}>{book.title} — {isPaper ? "Паперова" : "Електронна"}</span>
             {selected?.price != null && (
-              <span className={styles.price}>{`${selected.price} грн`}</span>
+              <span className={styles.price}>{`${displayPrice} грн`}</span>
             )}
           </h3>
-          <button onClick={onClose} aria-label="Закрити" className={styles.close}>×</button>
+          <button onClick={onCloseAction} aria-label="Закрити" className={styles.close}>×</button>
         </header>
 
         {/* Content */}
@@ -175,14 +187,41 @@ export default function Drawer({
               <small className={styles.note}>Email і телефон використовуються лише для доставки електронної версії.</small>
             </>
           ) : (
-            <p>Паперова версія. Натисніть кнопку нижче, щоб перейти до оплати.</p>
+            <>
+              <label>Кількість
+                <input
+                  type="number"
+                  inputMode="numeric"
+                  min={1}
+                  step={1}
+                  value={quantity}
+                  onChange={(e) => {
+                    const v = Math.floor(Number(e.target.value));
+                    if (Number.isFinite(v) && v >= 1)
+                        setQuantity(Number(e.target.value));
+                    else setQuantity('');
+                  }}
+                  onBlur={() => {
+                    setQuantity((q) => q && (Number.isFinite(q) && q >= 1 ? Math.floor(Number(q)) : 1));
+                  }}
+                  aria-label="Кількість примірників"
+                  aria-invalid={!quantityValid}
+                  aria-describedby={!quantityValid ? "err-qty" : undefined}
+                />
+                {!quantityValid && (
+                  <small id="err-qty" className={styles.error}>Вкажіть коректну кількість (мінімум 1).</small>
+                )}
+              </label>
+              <small className={styles.note}>Вкажіть кількість паперових примірників.</small>
+              <small className={styles.note}>Натисніть кнопку нижче, щоб перейти до оплати.</small>
+            </>
           )}
         </div>
 
         {/* Footer buttons matching original design */}
         {isPaper ? (
           <div className={styles.digitalCta}>
-            <button className={styles.imageBtn} onClick={onPurchase} aria-label="Monobank Checkout" disabled={loading}>
+            <button className={styles.imageBtn} onClick={onPurchase} aria-label="Monobank Checkout" disabled={loading || !quantityValid}>
               <Image src={addBasePath("/images/monocheckout_button_black_normal.svg")} alt="" width={398} height={40} />
             </button>
           </div>
