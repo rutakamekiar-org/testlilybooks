@@ -14,7 +14,7 @@ export type SimpleEvent = {
 
 export const events: SimpleEvent[] = [
   {
-    id: "the-ordirnary-presentation-krakow-2025-10-04",
+    id: "2025-10-04-the-ordirnary-presentation-krakow",
     title: "Презентація «Звичайної» у Кракові",
     date: "2025-10-04T13:00:00Z",
     location: "Кавʼярня-книнарня NIĆ",
@@ -23,7 +23,7 @@ export const events: SimpleEvent[] = [
     published: true,
   },
     {
-        id: "the-ordirnary-presentation-vienna-2025-10-12",
+        id: "2025-10-12-the-ordirnary-presentation-vienna",
         title: "Презентація «Звичайної» у Відні",
         date: "2025-10-12T13:00:00Z",
         location: "Українська бібліотека парафії Св. Варвари у Відні, Postgasse 8 1010 Wien",
@@ -32,7 +32,7 @@ export const events: SimpleEvent[] = [
         published: true,
     },
     {
-        id: "author-interview-youtube-2025-10-12",
+        id: "2025-10-12-author-interview-youtube",
         title: "Подкаст на каналі «Студія Калідор»",
         date: "2025-10-12T16:00:00Z",
         location: "YouTube",
@@ -41,7 +41,7 @@ export const events: SimpleEvent[] = [
         published: true,
     },
     {
-    id: "presentation-brno-2025-10-27",
+    id: "2025-10-27-presentation-brno",
     title: "Презентація «Звичайної» в Брно",
     date: "2025-10-27T17:00:00Z",
     location: "Український центр, Moravské nám. 15, Brno",
@@ -50,12 +50,21 @@ export const events: SimpleEvent[] = [
     published: true,
   },
   {
-    id: "book-presentation-2025-11-30",
+    id: "2025-11-30-book-presentation",
     title: "Презентація книги «Звичайна» в Зандамі",
-    date: "2025-11-30T16:00:00Z",
+    date: "2025-11-30T12:00:00Z",
     location: "Oekraïense Club, Rozengracht 6-8, 1506 SC Zaandam",
     blurb: "Презентація книги «Звичайна» в Зандамі",
     url: "https://www.instagram.com/p/DQQ7UWkDZEy/?igsh=YnBxajRqZ2I2b29i",
+    published: true,
+  },
+  {
+    id: "2025-11-29-book-presentation",
+    title: "Презентація книги «Звичайна» в Ейндховені",
+    date: "2025-11-29T09:00:00Z",
+    location: "St. Claralaan 38, 5654 AV Eindhoven, Nederland",
+    blurb: "Презентація книги «Звичайна» в Ейндховені",
+    url: "https://www.facebook.com/share/1AAJgs2RJ5/?mibextid=wwXIfr",
     published: true,
   }
 ];
