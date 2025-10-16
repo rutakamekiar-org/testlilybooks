@@ -30,6 +30,8 @@ export default function Drawer({
       setErrors({});
       setTouched({ email: false, phone: false });
       setLoading(false);
+      setEmail("");
+      setPhone("");
       if (format === "digital") {
         setTimeout(() => firstFieldRef.current?.focus(), 0);
       }
@@ -80,6 +82,7 @@ export default function Drawer({
       setLoading(true);
       if (format === "paper") {
         const res = await createPaperCheckout(book.id, 1);
+        onClose()
         window.location.href = res.redirectUrl;
         return;
       }
@@ -93,6 +96,7 @@ export default function Drawer({
         return;
       }
       const res = await createDigitalInvoice({ productId: selected.productId, customerEmail: email.trim(), customerPhone: phone.trim() });
+      onClose()
       window.location.href = res.redirectUrl;
     } catch (err: unknown) {
       setLoading(false);
